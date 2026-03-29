@@ -427,3 +427,49 @@ class TwistPolicyCfg(PolicyCfg):
     @property
     def mimic_obs_other_ids(self) -> list[int]:
         return [f for f in range(self.mimic_obs_total_degrees) if f not in self.mimic_obs_wrist_ids]
+
+class FalconPolicyCfg(PolicyCfg):
+    policy_type: str = "FalconPolicy"
+    disable_autoload: bool = True
+
+    # ======= MOTION POLICY CONFIGURATION =======
+    policy_name: str
+    relative_path: str
+
+    @property
+    def policy_file(self) -> str:
+        policy_file = ASSETS_DIR / f"models/{self.robot}/falcon/{self.policy_name}/{self.relative_path}"
+        return policy_file.as_posix()
+
+    # ======= POLICY SPECIFIC CONFIGURATION =======
+
+    class ObsScalesCfg(Config):
+        # base_lin_vel: float
+        base_ang_vel: float
+        projected_gravity: float
+        command_lin_vel: float
+        command_ang_vel: float
+        command_stand: float
+        command_waist_dofs: float
+        command_base_height: float
+        ref_upper_dof_pos: float
+        dof_pos: float
+        dof_vel: float
+        history: float
+        actions: float
+
+
+    action_scale: float = 0.25
+    action_clip: float | None = 100.0
+    obs_scales: ObsScalesCfg
+    #maybe problem
+    history_length: int = 5  # number of history observations to use
+    history_obs_dims: dict[str, int] = {}
+    """Note: the history obs item should be aligned with code of policy"""
+
+    USE_HISTORY: bool
+    GAIT_PERIOD: float
+    NUM_UPPER_BODY_JOINTS: int
+
+    # ======= Default Command CONFIGURATION =======
+    command_base_height_default: float
