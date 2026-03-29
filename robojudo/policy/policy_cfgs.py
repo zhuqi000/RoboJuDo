@@ -433,12 +433,11 @@ class FalconPolicyCfg(PolicyCfg):
     disable_autoload: bool = True
 
     # ======= MOTION POLICY CONFIGURATION =======
-    policy_name: str
-    relative_path: str
+    policy_name: str = "g1_29dof"
 
     @property
     def policy_file(self) -> str:
-        policy_file = ASSETS_DIR / f"models/{self.robot}/falcon/{self.policy_name}/{self.relative_path}"
+        policy_file = ASSETS_DIR / f"models/{self.robot}/falcon/{self.policy_name}.onnx"
         return policy_file.as_posix()
 
     # ======= POLICY SPECIFIC CONFIGURATION =======
@@ -451,7 +450,7 @@ class FalconPolicyCfg(PolicyCfg):
         command_ang_vel: float
         command_stand: float
         command_waist_dofs: float
-        command_base_height: float
+        command_base_height: float# only apply the base height if standing
         ref_upper_dof_pos: float
         dof_pos: float
         dof_vel: float
@@ -463,13 +462,19 @@ class FalconPolicyCfg(PolicyCfg):
     action_clip: float | None = 100.0
     obs_scales: ObsScalesCfg
     #maybe problem
-    history_length: int = 5  # number of history observations to use
+    history_length: int = 4  # number of history observations to use
     history_obs_dims: dict[str, int] = {}
     """Note: the history obs item should be aligned with code of policy"""
 
     USE_HISTORY: bool
     GAIT_PERIOD: float
-    NUM_UPPER_BODY_JOINTS: int
 
     # ======= Default Command CONFIGURATION =======
     command_base_height_default: float
+    class locomotion_command_ranges(Config):
+        lin_vel_x: list[float]=[-1.0, 1.0]
+        lin_vel_y: list[float]=[-1.0, 1.0]
+        ang_vel_yaw: list[float]=[-1.0, 1.0]
+        heading: list[float]=[-3.14, 3.14]
+        base_height: list[float]=[-0.25, 0.0]
+    command_ranges:locomotion_command_ranges

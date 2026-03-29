@@ -29,7 +29,7 @@ from .policy.g1_kungfubot_policy_cfg import G1KungfuBotGeneralPolicyCfg, G1Kungf
 from .policy.g1_smooth_policy_cfg import G1SmoothPolicyCfg  # noqa: F401
 from .policy.g1_twist_policy_cfg import G1TwistPolicyCfg  # noqa: F401
 from .policy.g1_unitree_policy_cfg import G1UnitreePolicyCfg, G1UnitreeWoGaitPolicyCfg  # noqa: F401
-
+from .policy.g1_falcon_policy_cfg import G1FalconPolicyCfg
 
 # ======================== Basic Configs ======================== #
 @cfg_registry.register
@@ -45,8 +45,8 @@ class g1(RlPipelineCfg):
     # env: G1_12MujocoEnvCfg = G1_12MujocoEnvCfg()
 
     ctrl: list[JoystickCtrlCfg | KeyboardCtrlCfg] = [  # note: the ranking of controllers matters
-        JoystickCtrlCfg(),
-        # KeyboardCtrlCfg(),
+        # JoystickCtrlCfg(),
+        KeyboardCtrlCfg(),
     ]
 
     policy: G1UnitreePolicyCfg = G1UnitreePolicyCfg()
@@ -336,3 +336,22 @@ class g1_switch_beyondmimic(RlMultiPolicyPipelineCfg):
 
 
 # TIPS: check g1_loco_mimic_cfg.py for more complex examples
+
+@cfg_registry.register
+class g1_falcon(RlPipelineCfg):
+    """
+    Unitree G1 robot configuration, Falcon Policy, Sim2Sim.
+    TwistRedisCtrl for the original repo of high level motion stream over redis.
+    MotionTwistCtrl for built-in motion control.
+    """
+
+    robot: str = "g1"
+    env: G1MujocoEnvCfg = G1MujocoEnvCfg()
+
+    ctrl: list[KeyboardCtrlCfg] = [  # note: the ranking of controllers matters
+        KeyboardCtrlCfg() 
+    ]
+
+    policy: G1FalconPolicyCfg = G1FalconPolicyCfg()
+
+
