@@ -44,11 +44,11 @@ class G1_29FalconDoF(DoFConfig):
     ]
 
     default_pos: list[float] | None = [
-        *[-0.1, 0.0, 0.0, 0.3, -0.2, 0.0],
-        *[-0.1, 0.0, 0.0, 0.3, -0.2, 0.0],
-        *[0.0, 0.0, 0.0],
-        *[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        *[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        *[-0.1, 0.0, 0.0, 0.3, -0.2, 0.0],#right fit
+        *[-0.1, 0.0, 0.0, 0.3, -0.2, 0.0],#right fit
+        *[0.0, 0.0, 0.0],#right fit
+        *[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],#right fit
+        *[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],#right fit
     ]
 
     stiffness: list[float] | None = [
@@ -143,17 +143,17 @@ class G1FalconPolicyCfg(FalconPolicyCfg):
 
     history_length: int = 4
     history_obs_dims: dict[str, int] = {  # from obs_mimic_dims, SORTED by key!!!
+        "actions":action_dof.num_dofs,           
         "base_ang_vel": 3,
-        "projected_gravity": 3,
-        "command_lin_vel": 2,
         "command_ang_vel": 1,
+        "command_base_height": 1,  
+        "command_lin_vel": 2,
         "command_stand": 1,
         "command_waist_dofs": 3,  # only apply the base height if standing
-        "command_base_height": 1,  
-        "ref_upper_dof_pos":14, 
         "dof_pos":obs_dof.num_dofs,
         "dof_vel":obs_dof.num_dofs,         
-        "actions":action_dof.num_dofs           
+        "projected_gravity": 3,
+        "ref_upper_dof_pos":14, 
     }
 
     USE_HISTORY: bool = True

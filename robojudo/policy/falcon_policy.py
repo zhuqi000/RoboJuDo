@@ -37,6 +37,7 @@ class FalconPolicy(Policy):
         if self.use_history:
             self.history_obs_dims = self.cfg_policy.history_obs_dims
             default_history = [np.zeros(dim, dtype=np.float32) for dim in self.history_obs_dims.values()]
+            default_history[3][0]=self.cfg_policy.command_base_height_default
             self._init_history(default_history)
 
     def post_step_callback(self, commands=None):
@@ -58,7 +59,7 @@ class FalconPolicy(Policy):
         if self.action_clip is not None:
             processed_actions = np.clip(processed_actions, -self.action_clip, self.action_clip)
 
-        self.last_action = actions.copy()  # TODO: check all policies after process
+        self.last_action = actions.copy()
         processed_actions = processed_actions * self.action_scale
         return processed_actions
     def _get_commands(self, ctrl_data):
@@ -97,9 +98,6 @@ class FalconPolicy(Policy):
                 break
         return command_lin_vel,command_ang_vel,command_stand,command_waist_dofs,command_base_height
     def _get_obs_history(self):
-        # for i, items in enumerate(zip(*self.history_buf, strict=True)):
-        #     for j, item in enumerate(items):
-        #         print(f"items[{i}][{j}] shape: {np.array(item).shape}")
         history_list = [np.concatenate(items, axis=0) for items in zip(*self.history_buf, strict=True)]
         return np.concatenate(history_list, axis=0)
     def get_observation(self, env_data, ctrl_data):
@@ -112,34 +110,34 @@ class FalconPolicy(Policy):
         gravity_orientation = get_gravity_orientation(env_data.base_quat)
         obs = np.concatenate(
             [
+                history,
+                self.last_action,
                 env_data.base_ang_vel * self.obs_scales.base_ang_vel,
-                gravity_orientation,
-                command_lin_vel * self.obs_scales.command_lin_vel,
                 command_ang_vel * self.obs_scales.command_ang_vel,
+                (command_base_height+self.cfg_policy.command_base_height_default)* self.obs_scales.command_base_height,
+                command_lin_vel * self.obs_scales.command_lin_vel,
                 command_stand * self.obs_scales.command_stand,
                 command_waist_dofs * self.obs_scales.command_waist_dofs,
-                (command_base_height+self.cfg_policy.command_base_height_default)* self.obs_scales.command_base_height,
-                self.ref_upper_dof_pos* self.obs_scales.ref_upper_dof_pos,
                 env_data.dof_pos - self.default_dof_pos,
                 env_data.dof_vel * self.obs_scales.dof_vel,
-                self.last_action,
-                history,
+                gravity_orientation,
+                self.ref_upper_dof_pos* self.obs_scales.ref_upper_dof_pos,
             ]
         )
         obs_a = [
-                env_data.base_ang_vel * self.obs_scales.base_ang_vel,
-                gravity_orientation,
-                command_lin_vel * self.obs_scales.command_lin_vel,
-                command_ang_vel * self.obs_scales.command_ang_vel,
-                command_stand * self.obs_scales.command_stand,
-                command_waist_dofs * self.obs_scales.command_waist_dofs,
+                self.last_action,#29
+                env_data.base_ang_vel * self.obs_scales.base_ang_vel,#3
+                command_ang_vel * self.obs_scales.command_ang_vel,#1
                 (command_base_height+self.cfg_policy.command_base_height_default)* self.obs_scales.command_base_height,
-                self.ref_upper_dof_pos* self.obs_scales.ref_upper_dof_pos,
-                env_data.dof_pos - self.default_dof_pos,
-                env_data.dof_vel * self.obs_scales.dof_vel,
-                self.last_action,
+                command_lin_vel * self.obs_scales.command_lin_vel,#2
+                command_stand * self.obs_scales.command_stand,#1
+                command_waist_dofs * self.obs_scales.command_waist_dofs,#3
+                env_data.dof_pos - self.default_dof_pos,#29
+                env_data.dof_vel * self.obs_scales.dof_vel,#29
+                gravity_orientation,#3
+                self.ref_upper_dof_pos* self.obs_scales.ref_upper_dof_pos,#14   
         ]
-        self.history_buf.appendleft(obs_a)
+        self.history_buf.append(obs_a)
         
         extras = {
             "command_lin_vel": command_lin_vel,
