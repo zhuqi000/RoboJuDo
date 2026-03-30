@@ -127,18 +127,18 @@ class G1FalconPolicyCfg(FalconPolicyCfg):
 
     # ======= POLICY SPECIFIC CONFIGURATION =======
     obs_scales: FalconPolicyCfg.ObsScalesCfg = FalconPolicyCfg.ObsScalesCfg(
+        actions=1.0,
         base_ang_vel=0.25,
-        projected_gravity=1.0,
-        command_lin_vel=1.0,
         command_ang_vel=1.0,
+        command_base_height=2.0,# only apply the base height if standing
+        command_lin_vel=1.0,
         command_stand=1.0,
         command_waist_dofs=1.0,
-        command_base_height=2.0,# only apply the base height if standing
-        ref_upper_dof_pos=1.0,
         dof_pos=1.0,
         dof_vel=0.05,
+        projected_gravity=1.0,
+        ref_upper_dof_pos=1.0,
         history=1.0,
-        actions=1.0,
     )
 
     history_length: int = 4

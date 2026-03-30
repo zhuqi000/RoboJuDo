@@ -23,13 +23,18 @@ class FalconPolicy(Policy):
 
         self.input_names = [i.name for i in self.session.get_inputs()]
         self.output_names = [o.name for o in self.session.get_outputs()]
+        self.command_lin_vel = np.zeros(2)
+        self.command_ang_vel = np.zeros(1)
+        self.command_stand = np.zeros(1)
+        self.command_waist_dofs=np.zeros(3)
+        self.command_base_height=np.zeros(1)
+        self.test=np.zeros(1)
         super().__init__(cfg_policy=cfg_policy, device=device)
-
         self.obs_scales = self.cfg_policy.obs_scales
         self.command_ranges=self.cfg_policy.command_ranges
         self.ref_upper_dof_pos=np.zeros(14)
         self.use_history = cfg_policy.USE_HISTORY
-
+        self.test_flag=0
         self.reset()
 
     def reset(self):
@@ -45,29 +50,23 @@ class FalconPolicy(Policy):
         pass
 
     def get_action(self, obs: np.ndarray) -> np.ndarray:
+
         ort_inputs = {
             "actor_obs": np.expand_dims(obs, axis=0).astype(np.float32),
         }
-
         ort_outputs = self.session.run(
             ["action"],
             ort_inputs,
         )
         actions: np.ndarray = np.asarray(ort_outputs[0]).squeeze()
-
         processed_actions = actions
         if self.action_clip is not None:
             processed_actions = np.clip(processed_actions, -self.action_clip, self.action_clip)
-
-        self.last_action = actions.copy()
+        self.last_action = processed_actions.copy()
         processed_actions = processed_actions * self.action_scale
         return processed_actions
     def _get_commands(self, ctrl_data):
-        command_lin_vel = np.zeros(2)
-        command_ang_vel = np.zeros(1)
-        command_stand = np.zeros(1)
-        command_waist_dofs=np.zeros(3)
-        command_base_height=np.zeros(1)
+        self.command_stand[0]=1
         for key in ctrl_data.keys():
             if key in ["KeyboardCtrl"]:
                 keys = ctrl_data[key]["keyboard_event"]
@@ -75,32 +74,42 @@ class FalconPolicy(Policy):
                     if event["type"] == "keyboard":
                         match event["name"]:
                             case "w":
-                                command_lin_vel[0] +=0.1
-                                command_lin_vel[0] = np.clip(command_lin_vel[0], self.command_ranges.lin_vel_x[0], self.command_ranges.lin_vel_x[1])
+                                self.command_lin_vel[0] +=0.1
+                                self.command_lin_vel[0] = np.clip(self.command_lin_vel[0], self.command_ranges.lin_vel_x[0], self.command_ranges.lin_vel_x[1])
                             case "s":
-                                command_lin_vel[0] -=0.1
-                                command_lin_vel[0] = np.clip(command_lin_vel[0], self.command_ranges.lin_vel_x[0], self.command_ranges.lin_vel_x[1])
+                                self.command_lin_vel[0] -=0.1
+                                self.command_lin_vel[0] = np.clip(self.command_lin_vel[0], self.command_ranges.lin_vel_x[0], self.command_ranges.lin_vel_x[1])
                             case "a":
-                                command_lin_vel[1] +=0.1
-                                command_lin_vel[1] = np.clip(command_lin_vel[1], self.command_ranges.lin_vel_y[0], self.command_ranges.lin_vel_y[1])
+                                self.command_lin_vel[1] +=0.1
+                                self.command_lin_vel[1] = np.clip(self.command_lin_vel[1], self.command_ranges.lin_vel_y[0], self.command_ranges.lin_vel_y[1])
 
                             case "d":
-                                command_lin_vel[1] -=0.1
-                                command_lin_vel[1] = np.clip(command_lin_vel[1], self.command_ranges.lin_vel_y[0], self.command_ranges.lin_vel_y[1])
+                                self.command_lin_vel[1] -=0.1
+                                self.command_lin_vel[1] = np.clip(self.command_lin_vel[1], self.command_ranges.lin_vel_y[0], self.command_ranges.lin_vel_y[1])
                             case "e":
-                                command_ang_vel[0] +=0.1
-                                command_ang_vel[0] = np.clip(command_ang_vel[0], self.command_ranges.ang_vel_yaw[0], self.command_ranges.ang_vel_yaw[1])
+                                self.command_ang_vel[0] +=0.1
+                                self.command_ang_vel[0] = np.clip(self.command_ang_vel[0], self.command_ranges.ang_vel_yaw[0], self.command_ranges.ang_vel_yaw[1])
 
                             case "q":
-                                command_ang_vel[0] -=0.1
-                                command_ang_vel[0] = np.clip(command_ang_vel[0], self.command_ranges.ang_vel_yaw[0], self.command_ranges.ang_vel_yaw[1])
+                                self.command_ang_vel[0] -=0.1
+                                self.command_ang_vel[0] = np.clip(self.command_ang_vel[0], self.command_ranges.ang_vel_yaw[0], self.command_ranges.ang_vel_yaw[1])
+
 
                 break
-        return command_lin_vel,command_ang_vel,command_stand,command_waist_dofs,command_base_height
+        if self.command_stand[0]==0:
+            self.command_lin_vel = np.zeros(2)
+            self.command_ang_vel = np.zeros(1)
+            self.command_waist_dofs=np.zeros(3)
+            self.command_base_height=np.zeros(1)
+        return self.command_lin_vel,self.command_ang_vel,self.command_stand,self.command_waist_dofs,self.command_base_height
+    # def _get_obs_history(self):
+    #     history_list = [np.concatenate(items, axis=0) for items in zip(*self.history_buf, strict=True)]
+    #     return np.concatenate(history_list, axis=0)
     def _get_obs_history(self):
-        history_list = [np.concatenate(items, axis=0) for items in zip(*self.history_buf, strict=True)]
-        return np.concatenate(history_list, axis=0)
+        time_step_concatenated = [np.concatenate(time_step, axis=0) for time_step in self.history_buf]
+        return np.concatenate(time_step_concatenated, axis=0)
     def get_observation(self, env_data, ctrl_data):
+        self.test[0]+=1
         command_lin_vel,command_ang_vel,command_stand,command_waist_dofs,command_base_height = self._get_commands(ctrl_data)
         if self.use_history:
             history = self._get_obs_history()
@@ -110,32 +119,32 @@ class FalconPolicy(Policy):
         gravity_orientation = get_gravity_orientation(env_data.base_quat)
         obs = np.concatenate(
             [
-                history,
-                self.last_action,
+                history*self.obs_scales.history,
+                self.last_action*self.obs_scales.actions,
                 env_data.base_ang_vel * self.obs_scales.base_ang_vel,
                 command_ang_vel * self.obs_scales.command_ang_vel,
-                (command_base_height+self.cfg_policy.command_base_height_default)* self.obs_scales.command_base_height,
+                (np.zeros(1)+self.cfg_policy.command_base_height_default)* self.obs_scales.command_base_height,
                 command_lin_vel * self.obs_scales.command_lin_vel,
                 command_stand * self.obs_scales.command_stand,
                 command_waist_dofs * self.obs_scales.command_waist_dofs,
-                env_data.dof_pos - self.default_dof_pos,
+                (env_data.dof_pos - self.default_dof_pos)*self.obs_scales.dof_pos,
                 env_data.dof_vel * self.obs_scales.dof_vel,
-                gravity_orientation,
+                gravity_orientation*self.obs_scales.projected_gravity,
                 self.ref_upper_dof_pos* self.obs_scales.ref_upper_dof_pos,
             ]
         )
         obs_a = [
-                self.last_action,#29
-                env_data.base_ang_vel * self.obs_scales.base_ang_vel,#3
-                command_ang_vel * self.obs_scales.command_ang_vel,#1
-                (command_base_height+self.cfg_policy.command_base_height_default)* self.obs_scales.command_base_height,
-                command_lin_vel * self.obs_scales.command_lin_vel,#2
-                command_stand * self.obs_scales.command_stand,#1
-                command_waist_dofs * self.obs_scales.command_waist_dofs,#3
-                env_data.dof_pos - self.default_dof_pos,#29
-                env_data.dof_vel * self.obs_scales.dof_vel,#29
-                gravity_orientation,#3
-                self.ref_upper_dof_pos* self.obs_scales.ref_upper_dof_pos,#14   
+                self.last_action*self.obs_scales.actions,
+                env_data.base_ang_vel * self.obs_scales.base_ang_vel,
+                command_ang_vel * self.obs_scales.command_ang_vel,
+                (np.zeros(1)+self.cfg_policy.command_base_height_default)* self.obs_scales.command_base_height,
+                command_lin_vel * self.obs_scales.command_lin_vel,
+                command_stand * self.obs_scales.command_stand,
+                command_waist_dofs * self.obs_scales.command_waist_dofs,
+                (env_data.dof_pos - self.default_dof_pos)*self.obs_scales.dof_pos,
+                env_data.dof_vel * self.obs_scales.dof_vel,
+                gravity_orientation*self.obs_scales.projected_gravity,
+                self.ref_upper_dof_pos* self.obs_scales.ref_upper_dof_pos,
         ]
         self.history_buf.append(obs_a)
         
@@ -146,4 +155,5 @@ class FalconPolicy(Policy):
             "command_waist_dofs": command_waist_dofs,
             "command_base_height": command_base_height,
         }
+        print(extras)
         return obs, extras
