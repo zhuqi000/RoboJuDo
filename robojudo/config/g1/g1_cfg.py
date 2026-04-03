@@ -399,9 +399,41 @@ class g1_falcon(RlPipelineCfg):
     env: G1MujocoEnvCfg = G1MujocoEnvCfg()
 
     ctrl: list[KeyboardCtrlCfg] = [  # note: the ranking of controllers matters
-        KeyboardCtrlCfg() 
+        KeyboardCtrlCfg(
+            triggers_extra={
+          "j": "[STATUS_SWITCH_0]",
+          "k": "[STATUS_SWITCH_1]",
+      }
+      ) 
     ]
 
     policy: G1FalconPolicyCfg = G1FalconPolicyCfg()
 
+@cfg_registry.register
+class g1_falcon_real(RlPipelineCfg):
+    """
+    Unitree G1 robot configuration, Falcon Policy, Sim2Sim.
+    TwistRedisCtrl for the original repo of high level motion stream over redis.
+    MotionTwistCtrl for built-in motion control.
+    """
+
+    robot: str = "g1"
+    env: G1MujocoEnvCfg = G1RealEnvCfg(
+        # env_type="UnitreeEnv",  # For unitree_sdk2py
+        env_type="UnitreeCppEnv",  # For unitree_cpp, check README for more details
+        unitree=G1UnitreeCfg(
+            net_if="eth0",  # note: change to your network interface
+        ),
+    )
+
+    ctrl: list[UnitreeCtrlCfg] = [  # note: the ranking of controllers matters
+        UnitreeCtrlCfg(triggers_extra={
+        "Up": "[STATUS_SWITCH_0]",
+        "Down": "[STATUS_SWITCH_1]",
+    }) 
+    ]
+
+    policy: G1FalconPolicyCfg = G1FalconPolicyCfg()
+
+    do_safety_check: bool = True  # enable safety check for real robot
 

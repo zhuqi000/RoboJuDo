@@ -35,7 +35,53 @@ class FalconPolicy(Policy):
         self.ref_upper_dof_pos=np.zeros(14)
         self.use_history = cfg_policy.USE_HISTORY
         self.test_flag=0
+        self.using_ref_motion=cfg_policy.using_ref_motion
+        self.max_cmd = self.cfg_policy.max_cmd
+        self.commands_map = self.cfg_policy.commands_map
+        if self.using_ref_motion:
+            self.step=0
+            self.motion_state="[MOTION_INIT]"
+            self.motion_file=cfg_policy.motion_file
+            self._init_ref_motion(self.motion_file)
         self.reset()
+
+    def _normalize_npz_like(self, data):
+        if hasattr(data, "files"):
+            keys = list(data.files)
+            return keys, data
+        if isinstance(data, dict):
+            keys = list(data.keys())
+            return keys, data
+        return [], data
+
+    def _init_ref_motion(self, motion_file: str) -> None:
+        if not os.path.isfile(motion_file):
+            raise FileNotFoundError(f"Motion file not found at {motion_file}")
+        data = np.load(motion_file, allow_pickle=True)
+        keys, container = self._normalize_npz_like(data)
+        self.ref_motion_data = container
+        self.ref_motion_keys = keys
+        self.ref_motion_lens = {}
+        for key in keys:
+            value = container[key]
+            arr = np.asarray(value)
+            if arr.ndim >= 1:
+                length = int(arr.shape[0])
+            else:
+                length = 1
+            self.ref_motion_lens[key] = length
+
+    def get_ref_motion_slice(self, key: str, index: int):
+        if not self.using_ref_motion:
+            raise RuntimeError("Ref motion is disabled. Set using_ref_motion=True in FalconPolicyCfg.")
+        if key not in self.ref_motion_data:
+            raise KeyError(f"Key '{key}' not found in ref motion data.")
+        arr = np.asarray(self.ref_motion_data[key])
+        if arr.ndim == 0:
+            raise ValueError(f"Ref motion item '{key}' is a scalar and cannot be indexed.")
+        if index < 0 or index >= arr.shape[0]:
+            raise IndexError(f"Index {index} out of range for '{key}' with length {arr.shape[0]}.")
+        return arr[index]
 
     def reset(self):
         self.last_action = np.zeros(self.num_actions)
@@ -66,8 +112,18 @@ class FalconPolicy(Policy):
         processed_actions = processed_actions * self.action_scale
         return processed_actions
     def _get_commands(self, ctrl_data):
-        self.command_stand[0]=1
         for key in ctrl_data.keys():
+            if key in ["JoystickCtrl", "UnitreeCtrl"]:
+                axes = ctrl_data[key]["axes"]
+                lx, ly, rx, ry = axes["LeftX"], axes["LeftY"], axes["RightX"], axes["RightY"]
+                self.command_lin_vel[0] = command_remap(ly, self.commands_map[0])*self.max_cmd[0]
+                self.command_lin_vel[0] = np.clip(self.command_lin_vel[0], self.command_ranges.lin_vel_x[0], self.command_ranges.lin_vel_x[1])
+                self.command_lin_vel[1] = command_remap(lx, self.commands_map[1])*self.max_cmd[1]
+                self.command_lin_vel[1] = np.clip(self.command_lin_vel[1], self.command_ranges.lin_vel_y[0], self.command_ranges.lin_vel_y[1])
+                self.command_ang_vel[0] = command_remap(rx, self.commands_map[2])*self.max_cmd[2]
+                self.command_ang_vel[0] = np.clip(self.command_ang_vel[0], self.command_ranges.ang_vel_yaw[0], self.command_ranges.ang_vel_yaw[1])
+
+        
             if key in ["KeyboardCtrl"]:
                 keys = ctrl_data[key]["keyboard_event"]
                 for event in keys:
@@ -93,9 +149,30 @@ class FalconPolicy(Policy):
                             case "q":
                                 self.command_ang_vel[0] -=0.1
                                 self.command_ang_vel[0] = np.clip(self.command_ang_vel[0], self.command_ranges.ang_vel_yaw[0], self.command_ranges.ang_vel_yaw[1])
+                            case "m":
+                                if self.using_ref_motion :
+                                    if self.motion_state=="[MOTION_INIT]":
+                                        self.motion_state=="[MOTION_FADE_IN]"
+                                    if self.motion_state=="[MOTION_FADE_IN]":
+                                        #TODO
+                                        self.command_waist_dofs
+                                        self.ref_upper_dof_pos
+                            case "n":
+                                if self.using_ref_motion :
+                                    if self.motion_state=="[MOTION_FADE_IN]":
+                                        self.motion_state="[MOTION_FADE_OUT]"
+                                        self.command_waist_dofs=np.zeros(3)
+                                        self.ref_upper_dof_pos=np.zeros(14)
 
 
                 break
+        commands = ctrl_data.get("COMMANDS", [])
+        for command in commands:
+            match command:
+                case "[STATUS_SWITCH_0]":
+                    self.command_stand[0]=0
+                case "[STATUS_SWITCH_1]":
+                    self.command_stand[0]=1
         if self.command_stand[0]==0:
             self.command_lin_vel = np.zeros(2)
             self.command_ang_vel = np.zeros(1)

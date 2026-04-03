@@ -431,7 +431,12 @@ class TwistPolicyCfg(PolicyCfg):
 class FalconPolicyCfg(PolicyCfg):
     policy_type: str = "FalconPolicy"
     disable_autoload: bool = True
-
+    using_ref_motion: bool = False
+    motion_name:float | None ="accad_test"
+    @property
+    def motion_file(self) -> str:
+        motion_file = ASSETS_DIR / f"motions/{self.robot}/test/{self.motion_name}.npz"
+        return motion_file.as_posix()
     # ======= MOTION POLICY CONFIGURATION =======
     policy_name: str = "g1_29dof"
 
@@ -478,3 +483,9 @@ class FalconPolicyCfg(PolicyCfg):
         heading: list[float]=[-3.14, 3.14]
         base_height: list[float]=[-0.25, 0.0]
     command_ranges:locomotion_command_ranges
+    max_cmd: list[float] = [1, 0.5, 1.57]
+    commands_map: list[list[float]] = [
+        [-1.0, 0.0, 1.0],
+        [1.0, 0.0, -1.0],
+        [1.0, 0.0, -1.0],
+    ]
