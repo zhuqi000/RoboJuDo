@@ -124,6 +124,8 @@ class G1FalconPolicyCfg(FalconPolicyCfg):
 
     obs_dof: DoFConfig = G1_29FalconDoF()
     action_dof: DoFConfig = obs_dof
+    using_ref_motion:bool =True
+    motion_name:str ="tets"
 
     # ======= POLICY SPECIFIC CONFIGURATION =======
     obs_scales: FalconPolicyCfg.ObsScalesCfg = FalconPolicyCfg.ObsScalesCfg(

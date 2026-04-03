@@ -432,7 +432,7 @@ class FalconPolicyCfg(PolicyCfg):
     policy_type: str = "FalconPolicy"
     disable_autoload: bool = True
     using_ref_motion: bool = False
-    motion_name:float | None ="accad_test"
+    motion_name:str | None ="accad_test2"
     @property
     def motion_file(self) -> str:
         motion_file = ASSETS_DIR / f"motions/{self.robot}/test/{self.motion_name}.npz"

@@ -403,11 +403,14 @@ class g1_falcon(RlPipelineCfg):
             triggers_extra={
           "j": "[STATUS_SWITCH_0]",
           "k": "[STATUS_SWITCH_1]",
+          "m": "[MOTION_START]",
+          "n": "[MOTION_RESET]",
       }
       ) 
     ]
 
     policy: G1FalconPolicyCfg = G1FalconPolicyCfg()
+    
 
 @cfg_registry.register
 class g1_falcon_real(RlPipelineCfg):

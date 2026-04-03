@@ -40,9 +40,9 @@ class FalconPolicy(Policy):
         self.commands_map = self.cfg_policy.commands_map
         if self.using_ref_motion:
             self.step=0
-            self.motion_state="[MOTION_INIT]"
             self.motion_file=cfg_policy.motion_file
             self._init_ref_motion(self.motion_file)
+        self.motion_init=False
         self.reset()
 
     def _normalize_npz_like(self, data):
@@ -70,6 +70,7 @@ class FalconPolicy(Policy):
             else:
                 length = 1
             self.ref_motion_lens[key] = length
+        self.ref_motion_min_len = min(self.ref_motion_lens.values(), default=0)
 
     def get_ref_motion_slice(self, key: str, index: int):
         if not self.using_ref_motion:
@@ -149,20 +150,6 @@ class FalconPolicy(Policy):
                             case "q":
                                 self.command_ang_vel[0] -=0.1
                                 self.command_ang_vel[0] = np.clip(self.command_ang_vel[0], self.command_ranges.ang_vel_yaw[0], self.command_ranges.ang_vel_yaw[1])
-                            case "m":
-                                if self.using_ref_motion :
-                                    if self.motion_state=="[MOTION_INIT]":
-                                        self.motion_state=="[MOTION_FADE_IN]"
-                                    if self.motion_state=="[MOTION_FADE_IN]":
-                                        #TODO
-                                        self.command_waist_dofs
-                                        self.ref_upper_dof_pos
-                            case "n":
-                                if self.using_ref_motion :
-                                    if self.motion_state=="[MOTION_FADE_IN]":
-                                        self.motion_state="[MOTION_FADE_OUT]"
-                                        self.command_waist_dofs=np.zeros(3)
-                                        self.ref_upper_dof_pos=np.zeros(14)
 
 
                 break
@@ -173,10 +160,23 @@ class FalconPolicy(Policy):
                     self.command_stand[0]=0
                 case "[STATUS_SWITCH_1]":
                     self.command_stand[0]=1
+                case "[MOTION_START]":
+                    self.motion_init=True
+                case "[MOTION_RESET]":
+                    self.step=0
+        if self.using_ref_motion and self.motion_init:
+            logger.debug("test")
+            motion_full=self.get_ref_motion_slice(key="dof_pos",index=self.step)
+            self.ref_upper_dof_pos=motion_full[15:29]
+            self.command_waist_dofs=motion_full[12:15]
+            self.step+=1
+            if self.step>=self.ref_motion_lens["dof_pos"]:
+                self.motion_init=False
+                self.ref_upper_dof_pos=np.zeros(14)
+                self.command_waist_dofs=np.zeros(3)
         if self.command_stand[0]==0:
             self.command_lin_vel = np.zeros(2)
             self.command_ang_vel = np.zeros(1)
-            self.command_waist_dofs=np.zeros(3)
             self.command_base_height=np.zeros(1)
         return self.command_lin_vel,self.command_ang_vel,self.command_stand,self.command_waist_dofs,self.command_base_height
     # def _get_obs_history(self):
@@ -210,6 +210,7 @@ class FalconPolicy(Policy):
                 self.ref_upper_dof_pos* self.obs_scales.ref_upper_dof_pos,
             ]
         )
+
         obs_a = [
                 self.last_action*self.obs_scales.actions,
                 env_data.base_ang_vel * self.obs_scales.base_ang_vel,
