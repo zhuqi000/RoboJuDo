@@ -465,3 +465,25 @@ class g1_amp(RlPipelineCfg):
     ]
 
     policy: G1AmpPolicyCfg = G1AmpPolicyCfg()
+    
+@cfg_registry.register
+class g1_amp_real(RlPipelineCfg):
+    """
+    Unitree G1 robot configuration, AMP Policy, Sim2Sim.
+    TwistRedisCtrl for the original repo of high level motion stream over redis.
+    MotionTwistCtrl for built-in motion control.
+    """
+
+    robot: str = "g1"
+    env: G1MujocoEnvCfg = G1RealEnvCfg(
+        # env_type="UnitreeEnv",  # For unitree_sdk2py
+        env_type="UnitreeCppEnv",  # For unitree_cpp, check README for more details
+        unitree=G1UnitreeCfg(
+            net_if="eth0",  # note: change to your network interface
+        ),
+    )
+    ctrl: list[UnitreeCtrlCfg] = [  # note: the ranking of controllers matters
+        UnitreeCtrlCfg() 
+    ]
+
+    policy: G1AmpPolicyCfg = G1AmpPolicyCfg()
