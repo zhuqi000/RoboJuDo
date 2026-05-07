@@ -489,3 +489,52 @@ class FalconPolicyCfg(PolicyCfg):
         [1.0, 0.0, -1.0],
         [1.0, 0.0, -1.0],
     ]
+    
+class AmpPolicyCfg(PolicyCfg):
+    policy_type: str = "AmpPolicy"
+    disable_autoload: bool = True
+    # ======= MOTION POLICY CONFIGURATION =======
+    policy_name: str = "g1_29dof"
+    @property
+    def policy_file(self) -> str:
+        policy_file = ASSETS_DIR / f"models/{self.robot}/amp/{self.policy_name}.onnx"
+        return policy_file.as_posix()
+
+    # ======= POLICY SPECIFIC CONFIGURATION =======
+    # TODO:检查角度单位
+    class ObsScalesCfg(Config):
+        # base_lin_vel: float
+        base_ang_vel: float
+        projected_gravity: float
+        command_lin_vel: float
+        command_ang_vel: float
+        joint_pos: float
+        joint_vel: float
+        actions: float
+        history: float
+
+
+    action_scales: list[float]
+    action_clip: float | None = 100.0
+    obs_scales: ObsScalesCfg
+    #maybe problem
+    history_length: int = 3  # number of history observations to use
+    history_obs_dims: dict[str, int] = {}
+    """Note: the history obs item should be aligned with code of policy"""
+
+    USE_HISTORY: bool
+
+    # ======= Default Command CONFIGURATION =======
+    class locomotion_command_ranges(Config):
+        lin_vel_x: list[float]=[-1.0, 1.0]
+        lin_vel_y: list[float]=[-1.0, 1.0]
+        ang_vel_yaw: list[float]=[-1.0, 1.0]
+        heading: list[float]=[-3.14, 3.14]
+        base_height: list[float]=[-0.25, 0.0]
+    command_ranges:locomotion_command_ranges
+    max_cmd: list[float] = [1, 0.5, 1.57]
+    commands_map: list[list[float]] = [
+        [-1.0, 0.0, 1.0],
+        [1.0, 0.0, -1.0],
+        [1.0, 0.0, -1.0],
+    ]

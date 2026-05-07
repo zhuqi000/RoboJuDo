@@ -31,6 +31,8 @@ from .policy.g1_smooth_policy_cfg import G1SmoothPolicyCfg  # noqa: F401
 from .policy.g1_twist_policy_cfg import G1TwistPolicyCfg  # noqa: F401
 from .policy.g1_unitree_policy_cfg import G1UnitreePolicyCfg, G1UnitreeWoGaitPolicyCfg  # noqa: F401
 from .policy.g1_falcon_policy_cfg import G1FalconPolicyCfg
+from .policy.g1_amp_policy_cfg import G1AmpPolicyCfg
+
 
 # ======================== Basic Configs ======================== #
 @cfg_registry.register
@@ -440,3 +442,26 @@ class g1_falcon_real(RlPipelineCfg):
 
     do_safety_check: bool = True  # enable safety check for real robot
 
+@cfg_registry.register
+class g1_amp(RlPipelineCfg):
+    """
+    Unitree G1 robot configuration, AMP Policy, Sim2Sim.
+    TwistRedisCtrl for the original repo of high level motion stream over redis.
+    MotionTwistCtrl for built-in motion control.
+    """
+
+    robot: str = "g1"
+    env: G1MujocoEnvCfg = G1MujocoEnvCfg()
+
+    ctrl: list[KeyboardCtrlCfg] = [  # note: the ranking of controllers matters
+        KeyboardCtrlCfg(
+            triggers_extra={
+          "j": "[STATUS_SWITCH_0]",
+          "k": "[STATUS_SWITCH_1]",
+          "m": "[MOTION_START]",
+          "n": "[MOTION_RESET]",
+      }
+      ) 
+    ]
+
+    policy: G1AmpPolicyCfg = G1AmpPolicyCfg()

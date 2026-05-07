@@ -37,3 +37,5 @@ policy_registry.add("KungfuBotGeneralPolicy", ".kungfubot_policy")
 policy_registry.add("TwistPolicy", ".twist_policy")
 policy_registry.add("FalconPolicy", ".falcon_policy")
 policy_registry.add("ProtoMotionsTrackerPolicy", ".protomotions_tracker_policy")
+policy_registry.add("AmpPolicy", ".amp_policy")
+
